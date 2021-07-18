@@ -20,19 +20,20 @@ import dev.waterdog.waterdogpe.command.Command;
 import dev.waterdog.waterdogpe.command.CommandSender;
 import dev.waterdog.waterdogpe.command.CommandSettings;
 
-public class EndCommand extends Command {
+public class StopCommand extends Command {
 
-    public EndCommand() {
-        super("end", CommandSettings.builder()
-                .setDescription("waterdog.command.end.description")
-                .setPermission("waterdog.command.end.permission")
-                .setUsageMessage("waterdog.command.end.usage").build());
-    }
+	public StopCommand() {
+		super("stop", CommandSettings.builder()
+				.setDescription("waterdog.command.end.description")
+				.setPermission("waterdog.command.end.permission")
+				.setUsageMessage("waterdog.command.end.usage")
+                .setAliases(new String[]{"end"}).build());
+	}
 
-    @Override
-    public boolean onExecute(CommandSender sender, String alias, String[] args) {
-        sender.sendMessage("§aShutting down the proxy instance..");
-        ProxyServer.getInstance().shutdown();
-        return true;
-    }
+	@Override
+	public boolean onExecute(CommandSender sender, String alias, String[] args) {
+		sender.sendMessage("§aShutting down the proxy instance..");
+		ProxyServer.getInstance().shutdown();
+		return true;
+	}
 }
