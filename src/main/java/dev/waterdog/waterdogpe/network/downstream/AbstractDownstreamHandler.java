@@ -17,11 +17,10 @@ package dev.waterdog.waterdogpe.network.downstream;
 
 import com.nukkitx.protocol.bedrock.BedrockSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
-import com.nukkitx.protocol.bedrock.packet.AvailableCommandsPacket;
-import com.nukkitx.protocol.bedrock.packet.ChangeDimensionPacket;
-import com.nukkitx.protocol.bedrock.packet.ChunkRadiusUpdatedPacket;
-import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
+import com.nukkitx.protocol.bedrock.packet.*;
+import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.command.Command;
+import dev.waterdog.waterdogpe.network.ServerInfo;
 import dev.waterdog.waterdogpe.network.protocol.ProtocolVersion;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
 import dev.waterdog.waterdogpe.utils.exceptions.CancelSignalException;
@@ -85,4 +84,34 @@ public abstract class AbstractDownstreamHandler implements BedrockPacketHandler 
         failedTask.accept(message);
         throw CancelSignalException.CANCEL;
     }
+
+	@Override
+	public boolean handle(ScriptCustomEventPacket packet) {
+		String event = packet.getEventName();
+		String[] parts = event.split(":");
+		if (parts.length > 1 && "waterdog".equals(parts[0])) {
+			switch (parts[1]) {
+				case "transfer":
+					ServerInfo info = this.player.getProxy().getServerInfo(packet.getData());
+					if (info != null) {
+						this.player.connect(info);
+					}
+					break;
+				case "ping":
+					long latency = this.player.getUpstream().getLatency() + this.player.getServer().getDownstream().getLatency();
+					ScriptCustomEventPacket pk = new ScriptCustomEventPacket();
+					pk.setEventName("waterdog:ping");
+					pk.setData(Long.toString(latency));
+					this.player.getServer().sendPacket(pk);
+					break;
+				case "dispatch":
+					ProxyServer.getInstance().dispatchCommand(this.player, packet.getData());
+					break;
+				default:
+					break;
+			}
+			throw CancelSignalException.CANCEL;
+		}
+		return false;
+	}
 }
