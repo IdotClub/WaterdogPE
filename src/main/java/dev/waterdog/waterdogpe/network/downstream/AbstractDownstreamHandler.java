@@ -86,26 +86,25 @@ public abstract class AbstractDownstreamHandler implements BedrockPacketHandler 
     }
 
 	@Override
-	public boolean handle(ScriptCustomEventPacket packet) {
-		String event = packet.getEventName();
+	public boolean handle(DebugInfoPacket packet) {
+		String event = packet.getData();
 		String[] parts = event.split(":");
-		if (parts.length > 1 && "waterdog".equals(parts[0])) {
+		if (parts.length >= 2 && "waterdog".equals(parts[0])) {
 			switch (parts[1]) {
 				case "transfer":
-					ServerInfo info = this.player.getProxy().getServerInfo(packet.getData());
+					ServerInfo info = this.player.getProxy().getServerInfo(parts[2]);
 					if (info != null) {
 						this.player.connect(info);
 					}
 					break;
 				case "ping":
 					long latency = this.player.getUpstream().getLatency() + this.player.getServer().getDownstream().getLatency();
-					ScriptCustomEventPacket pk = new ScriptCustomEventPacket();
-					pk.setEventName("waterdog:ping");
-					pk.setData(Long.toString(latency));
+					DebugInfoPacket pk = new DebugInfoPacket();
+					pk.setData("waterdog:ping:" + latency);
 					this.player.getServer().sendPacket(pk);
 					break;
 				case "dispatch":
-					ProxyServer.getInstance().dispatchCommand(this.player, packet.getData());
+					ProxyServer.getInstance().dispatchCommand(this.player, parts[2]);
 					break;
 				default:
 					break;
