@@ -18,6 +18,8 @@ package dev.waterdog.waterdogpe.network.bridge;
 import com.nukkitx.protocol.bedrock.BedrockPacket;
 import com.nukkitx.protocol.bedrock.BedrockSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
+import dev.waterdog.waterdogpe.ProxyServer;
+import dev.waterdog.waterdogpe.event.defaults.DownstreamPacketReceiveEvent;
 import dev.waterdog.waterdogpe.network.rewrite.RewriteMaps;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
 import dev.waterdog.waterdogpe.utils.exceptions.CancelSignalException;
@@ -40,5 +42,14 @@ public class DownstreamBridge extends ProxyBatchBridge {
             pluginHandled = this.player.getPluginDownstreamHandler().handlePacket(packet);
         }
         return changed || rewroteBlock || pluginHandled;
+    }
+
+    @Override
+    protected void onHandle(BedrockPacket packet) {
+        DownstreamPacketReceiveEvent event = new DownstreamPacketReceiveEvent(packet, this.player);
+        ProxyServer.getInstance().getEventManager().callEvent(event);
+        if (event.isCancelled()) {
+            throw CancelSignalException.CANCEL;
+        }
     }
 }

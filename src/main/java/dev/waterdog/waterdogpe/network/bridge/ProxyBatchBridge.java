@@ -53,6 +53,7 @@ public abstract class ProxyBatchBridge implements BatchHandler {
                         !(packet instanceof UnknownPacket) && this.handlePacket(packet, handler)) {
                     changed = true;
                 }
+                this.onHandle(packet);
                 allPackets.add(packet);
             } catch (CancelSignalException e) {
                 // In this case packet won't be released by protocol lib
@@ -72,6 +73,10 @@ public abstract class ProxyBatchBridge implements BatchHandler {
 
         // Packets from array aren't used so we can deallocate whole.
         this.deallocatePackets(allPackets);
+    }
+
+    protected void onHandle(BedrockPacket packet) {
+
     }
 
     protected void deallocatePackets(Collection<BedrockPacket> packets) {
