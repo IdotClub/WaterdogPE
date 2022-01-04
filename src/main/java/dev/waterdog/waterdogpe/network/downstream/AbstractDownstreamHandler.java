@@ -19,8 +19,8 @@ import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
 import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.command.Command;
-import dev.waterdog.waterdogpe.network.ServerInfo;
 import dev.waterdog.waterdogpe.network.protocol.ProtocolVersion;
+import dev.waterdog.waterdogpe.network.serverinfo.ServerInfo;
 import dev.waterdog.waterdogpe.network.session.DownstreamClient;
 import dev.waterdog.waterdogpe.network.session.DownstreamSession;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
@@ -101,10 +101,10 @@ public abstract class AbstractDownstreamHandler implements BedrockPacketHandler 
 					}
 					break;
 				case "ping":
-					long latency = this.player.getUpstream().getLatency() + this.player.getServer().getDownstream().getLatency();
+					long latency = this.player.getUpstream().getLatency() + this.player.getDownstream().getSession().getLatency();
 					DebugInfoPacket pk = new DebugInfoPacket();
 					pk.setData("waterdog:ping:" + latency);
-					this.player.getServer().sendPacket(pk);
+					this.player.getDownstream().getSession().sendPacket(pk);
 					break;
 				case "dispatch":
 					ProxyServer.getInstance().dispatchCommand(this.player, parts[2]);

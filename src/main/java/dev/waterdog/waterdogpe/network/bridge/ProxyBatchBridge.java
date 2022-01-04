@@ -16,7 +16,6 @@
 package dev.waterdog.waterdogpe.network.bridge;
 
 import com.nukkitx.protocol.bedrock.BedrockPacket;
-
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.UnknownPacket;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
@@ -76,8 +75,12 @@ public abstract class ProxyBatchBridge {
         this.deallocatePackets(allPackets);
     }
 
-    protected abstract void onHandle(BedrockPacket packet);
+    protected void onHandle(BedrockPacket packet) {
+
+    }
+
     public abstract void sendWrapped(Collection<BedrockPacket> packets, boolean encrypt);
+
     public abstract void sendWrapped(ByteBuf compressed, boolean encrypt);
 
     public abstract boolean isEncrypted();
