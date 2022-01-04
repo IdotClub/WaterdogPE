@@ -32,6 +32,8 @@ import java.util.UUID;
 
 public class PackManager {
 
+    private static final long CHUNK_SIZE = 102400;
+
     private static final PathMatcher ZIP_PACK_MATCHER = FileSystems.getDefault().getPathMatcher("glob:**.{zip,mcpack}");
     private static final ResourcePackStackPacket.Entry EDU_PACK = new ResourcePackStackPacket.Entry("0fba4063-dba1-4281-9b89-ff9390653530", "1.0.0", "");
 
@@ -146,9 +148,8 @@ public class PackManager {
     }
 
     public void rebuildPackets() {
-        boolean forcePacks = this.proxy.getConfiguration().forcePacks();
-        this.packsInfoPacket.setForcedToAccept(forcePacks);
-        this.stackPacket.setForcedToAccept(forcePacks);
+        this.packsInfoPacket.setForcedToAccept(this.proxy.getConfiguration().isForceServerPacks());
+        this.stackPacket.setForcedToAccept(this.proxy.getConfiguration().isOverwriteClientPacks());
 
         this.packsInfoPacket.getBehaviorPackInfos().clear();
         this.packsInfoPacket.getResourcePackInfos().clear();
@@ -185,8 +186,8 @@ public class PackManager {
         ResourcePackDataInfoPacket packet = new ResourcePackDataInfoPacket();
         packet.setPackId(resourcePack.getPackId());
         packet.setPackVersion(resourcePack.getVersion().toString());
-        packet.setMaxChunkSize(FileUtils.INT_MEGABYTE);
-        packet.setChunkCount(resourcePack.getPackSize() / packet.getMaxChunkSize());
+        packet.setMaxChunkSize(CHUNK_SIZE);
+        packet.setChunkCount((resourcePack.getPackSize() - 1) / packet.getMaxChunkSize() + 1);
         packet.setCompressedPackSize(resourcePack.getPackSize());
         packet.setHash(resourcePack.getHash());
         packet.setType(ResourcePackType.RESOURCE);
@@ -203,8 +204,8 @@ public class PackManager {
         packet.setPackId(from.getPackId());
         packet.setPackVersion(from.getPackVersion());
         packet.setChunkIndex(from.getChunkIndex());
-        packet.setData(resourcePack.getChunk(FileUtils.INT_MEGABYTE * from.getChunkIndex(), FileUtils.INT_MEGABYTE));
-        packet.setProgress((long) FileUtils.INT_MEGABYTE * from.getChunkIndex());
+        packet.setData(resourcePack.getChunk((int) CHUNK_SIZE * from.getChunkIndex(), (int) CHUNK_SIZE));
+        packet.setProgress(CHUNK_SIZE * from.getChunkIndex());
         return packet;
     }
 

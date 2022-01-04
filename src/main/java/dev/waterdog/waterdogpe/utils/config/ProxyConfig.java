@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-package dev.waterdog.waterdogpe.utils;
+package dev.waterdog.waterdogpe.utils.config;
 
 import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.utils.config.InetSocketAddressConverter;
-import dev.waterdog.waterdogpe.utils.config.ServerInfoConverter;
+import dev.waterdog.waterdogpe.utils.config.ServerEntryConverter;
 import dev.waterdog.waterdogpe.utils.config.ServerList;
 import dev.waterdog.waterdogpe.utils.config.ServerListConverter;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -37,7 +37,7 @@ public class ProxyConfig extends YamlConfig {
             "address field is formatted using ip:port",
             "publicAddress is optional and can be set to the ip players can directly connect through"
     })
-    private ServerList serverInfoMap = new ServerList().initEmpty();
+    private ServerList serverList = new ServerList().initEmpty();
 
     @Path("listener.motd")
     @Comment("The Motd which will be displayed in the server tab of a player and returned during ping")
@@ -130,9 +130,13 @@ public class ProxyConfig extends YamlConfig {
     @Comment("Enable/Disable the resource pack system")
     private boolean enableResourcePacks = true;
 
-    @Path("force_apply_packs")
-    @Comment("Whether texture packs should be enforced")
-    private boolean forcePacks = false;
+    @Path("overwrite_client_packs")
+    @Comment("If this is enabled, the client will not be able to use custom packs")
+    private boolean overwriteClientPacks = false;
+
+    @Path("force_server_packs")
+    @Comment("If enabled, the client will be forced to accept server-sided resource packs")
+    private boolean forceServerPacks = false;
 
     @Path("pack_cache_size")
     @Comment("You can set maximum pack size in MB to be cached.")
@@ -147,7 +151,7 @@ public class ProxyConfig extends YamlConfig {
         this.CONFIG_FILE = file;
         try {
             this.addConverter(InetSocketAddressConverter.class);
-            this.addConverter(ServerInfoConverter.class);
+            this.addConverter(ServerEntryConverter.class);
             this.addConverter(ServerListConverter.class);
         } catch (InvalidConverterException e) {
             ProxyServer.getInstance().getLogger().error("Error while initiating config converters", e);
@@ -266,12 +270,20 @@ public class ProxyConfig extends YamlConfig {
         return this.enableResourcePacks;
     }
 
-    public void setForcePacks(boolean forcePacks) {
-        this.forcePacks = forcePacks;
+    public boolean isOverwriteClientPacks() {
+        return overwriteClientPacks;
     }
 
-    public boolean forcePacks() {
-        return this.forcePacks;
+    public void setOverwriteClientPacks(boolean overwriteClientPacks) {
+        this.overwriteClientPacks = overwriteClientPacks;
+    }
+
+    public void setForceServerPacks(boolean forceServerPacks) {
+        this.forceServerPacks = forceServerPacks;
+    }
+
+    public boolean isForceServerPacks() {
+        return forceServerPacks;
     }
 
     public int getPackCacheSize() {
@@ -282,8 +294,8 @@ public class ProxyConfig extends YamlConfig {
         this.packCacheSize = packCacheSize;
     }
 
-    public ServerList getServerInfoMap() {
-        return this.serverInfoMap;
+    public ServerList getServerList() {
+        return this.serverList;
     }
 
     public int getDefaultIdleThreads() {

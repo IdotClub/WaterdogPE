@@ -15,13 +15,14 @@
 
 package dev.waterdog.waterdogpe.network.downstream;
 
-import com.nukkitx.protocol.bedrock.BedrockSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
 import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.command.Command;
 import dev.waterdog.waterdogpe.network.ServerInfo;
 import dev.waterdog.waterdogpe.network.protocol.ProtocolVersion;
+import dev.waterdog.waterdogpe.network.session.DownstreamClient;
+import dev.waterdog.waterdogpe.network.session.DownstreamSession;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
 import dev.waterdog.waterdogpe.utils.exceptions.CancelSignalException;
 
@@ -29,10 +30,12 @@ import java.util.function.Consumer;
 
 public abstract class AbstractDownstreamHandler implements BedrockPacketHandler {
 
+    protected final DownstreamClient client;
     protected final ProxiedPlayer player;
 
-    public AbstractDownstreamHandler(ProxiedPlayer player) {
+    public AbstractDownstreamHandler(ProxiedPlayer player, DownstreamClient client) {
         this.player = player;
+        this.client = client;
     }
 
     @Override
@@ -62,7 +65,7 @@ public abstract class AbstractDownstreamHandler implements BedrockPacketHandler 
         return false;
     }
 
-    protected boolean onPlayStatus(PlayStatusPacket packet, Consumer<String> failedTask, BedrockSession downstream) {
+    protected boolean onPlayStatus(PlayStatusPacket packet, Consumer<String> failedTask, DownstreamSession downstream) {
         String message;
         switch (packet.getStatus()) {
             case LOGIN_SUCCESS:

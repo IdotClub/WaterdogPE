@@ -18,11 +18,10 @@ package dev.waterdog.waterdogpe.command.defaults;
 import com.nukkitx.protocol.bedrock.data.command.CommandData;
 import com.nukkitx.protocol.bedrock.data.command.CommandParam;
 import com.nukkitx.protocol.bedrock.data.command.CommandParamData;
-import com.nukkitx.protocol.bedrock.data.command.CommandParamType;
 import dev.waterdog.waterdogpe.command.Command;
 import dev.waterdog.waterdogpe.command.CommandSender;
 import dev.waterdog.waterdogpe.command.CommandSettings;
-import dev.waterdog.waterdogpe.network.ServerInfo;
+import dev.waterdog.waterdogpe.network.serverinfo.ServerInfo;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
 import dev.waterdog.waterdogpe.utils.types.TextContainer;
 
@@ -54,6 +53,11 @@ public class ServerCommand extends Command {
         if (sender.isPlayer() && args.length < 2) {
             player = (ProxiedPlayer) sender;
         } else {
+            if (!sender.hasPermission("waterdog.command.server.permission.other")) {
+                sender.sendMessage(new TextContainer("§cYou don't have the permission to move other players."));
+                return false;
+            }
+
             player = sender.getProxy().getPlayer(args[1]);
             if (player == null) {
                 sender.sendMessage("§cPlayer not found!");

@@ -16,6 +16,8 @@
 package dev.waterdog.waterdogpe.network.protocol.codec;
 
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
+import com.nukkitx.protocol.bedrock.packet.LevelChunkPacket;
+import com.nukkitx.protocol.bedrock.packet.UpdateBlockPacket;
 import com.nukkitx.protocol.bedrock.v407.BedrockPacketHelper_v407;
 import dev.waterdog.waterdogpe.network.protocol.ProtocolVersion;
 
@@ -30,5 +32,12 @@ public class BedrockCodec408 extends BedrockCodec407 {
     public void buildCodec(BedrockPacketCodec.Builder builder) {
         super.buildCodec(builder);
         builder.helper(BedrockPacketHelper_v407.INSTANCE);
+
+        // Since this version block palettes are client authoritative,
+        // which means we don't need to handle this anymore
+        // However, we cannot deregister LevelChunkPacket as we are sending it,
+        // We might consider implementing different upstream and downstream codecs in the future
+        // builder.deregisterPacket(LevelChunkPacket.class);
+        builder.deregisterPacket(UpdateBlockPacket.class);
     }
 }

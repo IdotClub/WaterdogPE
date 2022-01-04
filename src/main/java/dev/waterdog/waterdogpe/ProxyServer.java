@@ -17,6 +17,8 @@ package dev.waterdog.waterdogpe;
 
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.nukkitx.network.util.EventLoops;
+import com.nukkitx.network.util.NetworkThreadFactory;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockServer;
 import dev.waterdog.waterdogpe.command.*;
@@ -26,7 +28,7 @@ import dev.waterdog.waterdogpe.event.defaults.DispatchCommandEvent;
 import dev.waterdog.waterdogpe.event.defaults.ProxyStartEvent;
 import dev.waterdog.waterdogpe.logger.MainLogger;
 import dev.waterdog.waterdogpe.network.ProxyListener;
-import dev.waterdog.waterdogpe.network.ServerInfo;
+import dev.waterdog.waterdogpe.network.serverinfo.ServerInfo;
 import dev.waterdog.waterdogpe.network.protocol.ProtocolConstants;
 import dev.waterdog.waterdogpe.network.protocol.ProtocolVersion;
 import dev.waterdog.waterdogpe.packs.PackManager;
@@ -36,11 +38,12 @@ import dev.waterdog.waterdogpe.plugin.PluginManager;
 import dev.waterdog.waterdogpe.query.QueryHandler;
 import dev.waterdog.waterdogpe.scheduler.WaterdogScheduler;
 import dev.waterdog.waterdogpe.utils.ConfigurationManager;
-import dev.waterdog.waterdogpe.utils.LangConfig;
-import dev.waterdog.waterdogpe.utils.ProxyConfig;
+import dev.waterdog.waterdogpe.utils.config.LangConfig;
+import dev.waterdog.waterdogpe.utils.config.ProxyConfig;
+import dev.waterdog.waterdogpe.network.serverinfo.ServerInfoMap;
 import dev.waterdog.waterdogpe.utils.types.ProxyListenerInterface;
-import dev.waterdog.waterdogpe.utils.config.ServerList;
 import dev.waterdog.waterdogpe.utils.types.*;
+import io.netty.channel.EventLoopGroup;
 import net.cubespace.Yamler.Config.InvalidConfigurationException;
 
 import java.net.InetSocketAddress;
@@ -59,21 +62,30 @@ public class ProxyServer {
 
     private final MainLogger logger;
     private final TerminalConsole console;
+
     private final ConfigurationManager configurationManager;
     private final WaterdogScheduler scheduler;
     private final PlayerManager playerManager;
     private final PluginManager pluginManager;
     private final EventManager eventManager;
     private final PackManager packManager;
-    private final ServerList serverInfoMap;
-    private final ConsoleCommandSender commandSender;
-    private final ScheduledExecutorService tickExecutor;
+
+    private final ServerInfoMap serverInfoMap = new ServerInfoMap();
+
     private BedrockServer bedrockServer;
     private QueryHandler queryHandler;
+
     private CommandMap commandMap;
+    private final ConsoleCommandSender commandSender;
+
     private IReconnectHandler reconnectHandler;
     private IJoinHandler joinHandler;
+    private IForcedHostHandler forcedHostHandler;
     private ProxyListenerInterface proxyListener = new ProxyListenerInterface(){};
+
+    private final EventLoopGroup bossEventLoopGroup;
+    private final EventLoopGroup workerEventLoopGroup;
+    private final ScheduledExecutorService tickExecutor;
     private ScheduledFuture<?> tickFuture;
     private boolean shutdown = false;
     private int currentTick = 0;
@@ -87,24 +99,21 @@ public class ProxyServer {
 
         if (!this.pluginPath.toFile().exists()) {
             if (this.pluginPath.toFile().mkdirs())
-                this.logger.info("Created Plugin Folder at " + this.pluginPath.toString());
+                this.logger.info("Created Plugin Folder at " + this.pluginPath);
             else
-                this.logger.warning("Could not create Plugin Folder at " + this.pluginPath.toString());
+                this.logger.warning("Could not create Plugin Folder at " + this.pluginPath);
         }
 
         if (!this.packsPath.toFile().exists()) {
             if (this.packsPath.toFile().mkdirs())
-                this.logger.info("Created Packs Folder at " + this.packsPath.toString());
+                this.logger.info("Created Packs Folder at " + this.packsPath);
             else
-                this.logger.warning("Could not create Packs Folder at " + this.packsPath.toString());
+                this.logger.warning("Could not create Packs Folder at " + this.packsPath);
         }
-
-        ThreadFactoryBuilder builder = new ThreadFactoryBuilder();
-        builder.setNameFormat("WaterdogTick Executor");
-        this.tickExecutor = Executors.newScheduledThreadPool(1, builder.build());
 
         this.configurationManager = new ConfigurationManager(this);
         this.configurationManager.loadProxyConfig();
+        this.configurationManager.loadLanguage();
 
         if (!this.getConfiguration().isIpv6Enabled()) {
             // Some devices and networks may not support IPv6
@@ -114,12 +123,36 @@ public class ProxyServer {
         if (this.getConfiguration().isDebug()) {
             WaterdogPE.version().debug(true);
         }
-        this.configurationManager.loadLanguage();
+
+        ThreadFactoryBuilder builder = new ThreadFactoryBuilder();
+        builder.setNameFormat("WaterdogTick Executor");
+        this.tickExecutor = Executors.newScheduledThreadPool(1, builder.build());
+
+        EventLoops.ChannelType channelType = EventLoops.getChannelType();
+        this.logger.info("Using " + channelType.name() + " channel implementation as default!");
+        for (EventLoops.ChannelType type : EventLoops.ChannelType.values()) {
+            this.logger.debug("Supported " + type.name() + " channels: " + type.isAvailable());
+        }
+
+        NetworkThreadFactory workerFactory = NetworkThreadFactory.builder()
+                .format("Bedrock Listener - #%d")
+                .priority(5)
+                .daemon(true)
+                .build();
+        NetworkThreadFactory bossFactory = NetworkThreadFactory.builder()
+                .format("RakNet Listener - #%d")
+                .priority(8)
+                .daemon(true)
+                .build();
+        this.workerEventLoopGroup = channelType.newEventLoopGroup(0, workerFactory);
+        this.bossEventLoopGroup = channelType.newEventLoopGroup(0, bossFactory);
+
         // Default Handlers
         this.reconnectHandler = new VanillaReconnectHandler();
+        this.forcedHostHandler = new VanillaForcedHostHandler();
         this.joinHandler = new VanillaJoinHandler(this);
-        this.serverInfoMap = this.configurationManager.getProxyConfig().getServerInfoMap();
         this.pluginManager = new PluginManager(this);
+        this.configurationManager.loadServerInfos(this.serverInfoMap);
         this.scheduler = new WaterdogScheduler(this);
         this.playerManager = new PlayerManager(this);
         this.eventManager = new EventManager(this);
@@ -154,7 +187,7 @@ public class ProxyServer {
             this.queryHandler = new QueryHandler(this, bindAddress);
         }
 
-        this.bedrockServer = new BedrockServer(bindAddress, Runtime.getRuntime().availableProcessors());
+        this.bedrockServer = new BedrockServer(bindAddress, Runtime.getRuntime().availableProcessors(), this.bossEventLoopGroup, this.workerEventLoopGroup, false);
         this.bedrockServer.setHandler(new ProxyListener(this));
         this.bedrockServer.bind().join();
 
@@ -202,10 +235,10 @@ public class ProxyServer {
 
     private void shutdown0() throws Exception {
         this.pluginManager.disableAllPlugins();
-
+        String disconnectReason = new TranslationContainer("waterdog.server.shutdown").getTranslated();
         for (Map.Entry<UUID, ProxiedPlayer> player : this.playerManager.getPlayers().entrySet()) {
             this.logger.info("Disconnecting " + player.getValue().getName());
-            player.getValue().disconnect("Proxy Shutdown", true);
+            player.getValue().disconnect(disconnectReason, true);
         }
         Thread.sleep(500); // Give small delay to send packet
 
@@ -255,9 +288,13 @@ public class ProxyServer {
         return !event.isCancelled() && this.commandMap.handleCommand(sender, args[0], shiftedArgs);
     }
 
-    public CompletableFuture<BedrockClient> bindClient(ProtocolVersion protocol) {
+    public BedrockClient createBedrockClient() {
         InetSocketAddress address = new InetSocketAddress("0.0.0.0", 0);
-        BedrockClient client = new BedrockClient(address);
+        return new BedrockClient(address, this.bossEventLoopGroup);
+    }
+
+    public CompletableFuture<BedrockClient> bindClient(ProtocolVersion protocol) {
+        BedrockClient client = this.createBedrockClient();
         client.setRakNetVersion(protocol.getRaknetVersion());
         return client.bind().thenApply(i -> client);
     }
@@ -375,6 +412,10 @@ public class ProxyServer {
         return this.serverInfoMap.values();
     }
 
+    public ServerInfoMap getServerInfoMap() {
+        return this.serverInfoMap;
+    }
+
     public Path getPluginPath() {
         return this.pluginPath;
     }
@@ -422,6 +463,14 @@ public class ProxyServer {
 
     public IReconnectHandler getReconnectHandler() {
         return this.reconnectHandler;
+    }
+
+    public IForcedHostHandler getForcedHostHandler() {
+        return forcedHostHandler;
+    }
+
+    public void setForcedHostHandler(IForcedHostHandler forcedHostHandler) {
+        this.forcedHostHandler = forcedHostHandler;
     }
 
     public void setReconnectHandler(IReconnectHandler reconnectHandler) {
