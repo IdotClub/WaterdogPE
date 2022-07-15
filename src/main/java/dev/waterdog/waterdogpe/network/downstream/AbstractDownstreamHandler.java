@@ -65,6 +65,14 @@ public abstract class AbstractDownstreamHandler implements BedrockPacketHandler 
         return false;
     }
 
+    @Override
+    public boolean handle(ClientCacheMissResponsePacket packet) {
+        if (this.player.getProtocol().isBefore(ProtocolVersion.MINECRAFT_PE_1_18_30)) {
+            this.player.getChunkBlobs().removeAll(packet.getBlobs().keySet());
+        }
+        return false;
+    }
+
     protected boolean onPlayStatus(PlayStatusPacket packet, Consumer<String> failedTask, DownstreamSession downstream) {
         String message;
         switch (packet.getStatus()) {

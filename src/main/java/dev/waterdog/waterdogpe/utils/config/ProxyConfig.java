@@ -92,7 +92,7 @@ public class ProxyConfig extends YamlConfig {
 
     @Path("use_login_extras")
     @Comment("If enabled, the proxy will pass information like XUID or IP to the downstream server using custom fields in the LoginPacket")
-    private boolean useLoginExtras = true;
+    private boolean useLoginExtras = false;
 
     @Path("replace_username_spaces")
     @Comment("Replaces username spaces with underscores if enabled")
@@ -119,12 +119,12 @@ public class ProxyConfig extends YamlConfig {
     private int upstreamCompression = 6;
 
     @Path("downstream_compression_level")
-    @Comment("Upstream server compression ratio(proxy to downstream server), higher = less bandwidth, more cpu, lower vice versa")
+    @Comment("Downstream server compression ratio(proxy to downstream server), higher = less bandwidth, more cpu, lower vice versa")
     private int downstreamCompression = 2;
 
     @Path("enable_edu_features")
     @Comment("Education features require small adjustments to work correctly. Enable this option if any of downstream servers support education features.")
-    private boolean enableEducationFeatures = false;
+    private boolean enableEducationFeatures = true;
 
     @Path("enable_packs")
     @Comment("Enable/Disable the resource pack system")

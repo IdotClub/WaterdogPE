@@ -43,6 +43,7 @@ public class TransferBatchBridge extends AbstractDownstreamBatchBridge {
 
     public TransferBatchBridge(ProxiedPlayer player, BedrockSession upstreamSession) {
         super(player, upstreamSession);
+        this.trackEntities = false;
     }
 
     @Override
@@ -57,7 +58,7 @@ public class TransferBatchBridge extends AbstractDownstreamBatchBridge {
     /**
      * Here we send all queued packets from downstream to upstream.
      * Packets will be sent after StartGamePacket is received and dimension change sequence has been passed.
-     * Please notice that we use eventLoop of RakNet session instead of BedrockSession because
+     * Please be aware that we use eventLoop of RakNet session instead of BedrockSession because
      * received packets are also handled by RakNet eventLoop!
      */
     public void flushQueue() {
@@ -70,6 +71,7 @@ public class TransferBatchBridge extends AbstractDownstreamBatchBridge {
             this.player.disconnect("Transfer packet queue got too large!");
             // Deallocate packet queue manually because result of TransferBatchBridge#release called
             // from disconnect handler can be ignored as BatchHandler can be already changed.
+            player.getProxy().getMetricsHandler().packetQueueTooLarge();
             this.free();
             return;
         }
@@ -87,11 +89,12 @@ public class TransferBatchBridge extends AbstractDownstreamBatchBridge {
         boolean isStartGame = packet.getPacketType() == BedrockPacketType.START_GAME;
         if (isStartGame) {
             this.hasStartGame = true;
+            this.trackEntities = true;
         }
         super.handlePacket(packet, handler);
         // Packets after StartGamePacket should be queued
         // Ignore LevelEvent packet to prevent massive amounts of packets in queue
-        if (!isStartGame && this.hasStartGame && packet.getPacketType() != BedrockPacketType.LEVEL_EVENT) {
+        if (!isStartGame && this.hasStartGame && !this.isPacketTypeIgnored(packet.getPacketType())) {
             this.packetQueue.add(ReferenceCountUtil.retain(packet));
         }
         throw CancelSignalException.CANCEL;
@@ -103,6 +106,15 @@ public class TransferBatchBridge extends AbstractDownstreamBatchBridge {
             this.packetQueue.add(packet.retain());
         }
         throw CancelSignalException.CANCEL;
+    }
+
+    protected boolean isPacketTypeIgnored(BedrockPacketType packetType) {
+        switch (packetType) {
+            case LEVEL_EVENT:
+            case SPAWN_PARTICLE_EFFECT:
+                return true;
+        }
+        return false;
     }
 
     public void setDimLockActive(boolean active) {

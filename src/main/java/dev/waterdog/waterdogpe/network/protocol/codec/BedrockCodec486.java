@@ -16,21 +16,29 @@
 package dev.waterdog.waterdogpe.network.protocol.codec;
 
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
+import com.nukkitx.protocol.bedrock.packet.BossEventPacket;
 import com.nukkitx.protocol.bedrock.packet.LevelChunkPacket;
-import com.nukkitx.protocol.bedrock.packet.UpdateBlockPacket;
-import com.nukkitx.protocol.bedrock.v407.BedrockPacketHelper_v407;
+import com.nukkitx.protocol.bedrock.v486.BedrockPacketHelper_v486;
+import com.nukkitx.protocol.bedrock.v486.serializer.BossEventSerializer_v486;
+import com.nukkitx.protocol.bedrock.v486.serializer.LevelChunkSerializer_v486;
 import dev.waterdog.waterdogpe.network.protocol.ProtocolVersion;
 
-public class BedrockCodec408 extends BedrockCodec407 {
+public class BedrockCodec486 extends BedrockCodec475 {
 
     @Override
     public ProtocolVersion getProtocol() {
-        return ProtocolVersion.MINECRAFT_PE_1_16_20;
+        return ProtocolVersion.MINECRAFT_PE_1_18_10;
     }
 
     @Override
     public void buildCodec(BedrockPacketCodec.Builder builder) {
         super.buildCodec(builder);
-        builder.helper(BedrockPacketHelper_v407.INSTANCE);
+        builder.helper(BedrockPacketHelper_v486.INSTANCE);
+
+        builder.deregisterPacket(BossEventPacket.class);
+        builder.registerPacket(BossEventPacket.class, BossEventSerializer_v486.INSTANCE, 74);
+
+        builder.deregisterPacket(LevelChunkPacket.class);
+        builder.registerPacket(LevelChunkPacket.class, LevelChunkSerializer_v486.INSTANCE, 58);
     }
 }

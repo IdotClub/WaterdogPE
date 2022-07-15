@@ -72,6 +72,7 @@ public class ProxiedPlayer implements CommandSender {
     private final ObjectSet<String> scoreboards = ObjectSets.synchronize(new ObjectOpenHashSet<>());
     private final Long2ObjectMap<ScoreInfo> scoreInfos = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
     private final Long2LongMap entityLinks = Long2LongMaps.synchronize(new Long2LongOpenHashMap());
+    private final LongSet chunkBlobs = LongSets.synchronize(new LongOpenHashSet());
     private final Object2ObjectMap<String, Permission> permissions = new Object2ObjectOpenHashMap<>();
     private DownstreamClient downstreamConnection;
     private DownstreamClient pendingConnection;
@@ -241,7 +242,7 @@ public class ProxiedPlayer implements CommandSender {
             downstream.onDownstreamInit(this, initial);
             SessionInjections.injectNewDownstream(this, downstream, client);
 
-            this.loginData.doLogin(downstream, this);
+            this.loginData.doLogin(downstream);
             this.getLogger().info("[" + this.getAddress() + "|" + this.getName() + "] -> Downstream [" + targetServer.getServerName() + "] has connected");
         })).whenComplete((ignore, error) -> {
             if (error != null) {
@@ -319,7 +320,7 @@ public class ProxiedPlayer implements CommandSender {
 
         this.proxy.getPlayerManager().removePlayer(this);
         this.getLogger().info("[" + this.getAddress() + "|" + this.getName() + "] -> Upstream has disconnected");
-        if (reason != null) this.getLogger().info("[" + this.getName() + "] -> Disconnected with: §c" + reason);
+        if (reason != null) this.getLogger().info("[" + this.getName() + "] -> Disconnected with: " + reason);
     }
 
     /**
@@ -357,7 +358,7 @@ public class ProxiedPlayer implements CommandSender {
     }
 
     /**
-     * Sends a immediately packet to the upstream connection
+     * Sends immediately packet to the upstream connection
      *
      * @param packet the packet to send
      */
@@ -478,6 +479,7 @@ public class ProxiedPlayer implements CommandSender {
         packet.setType(SetTitlePacket.Type.SUBTITLE);
         packet.setText(subtitle);
         packet.setXuid(this.getXuid());
+        packet.setPlatformOnlineId("");
         this.sendPacket(packet);
     }
 
@@ -496,6 +498,7 @@ public class ProxiedPlayer implements CommandSender {
         packet.setFadeOutTime(fadeout);
         packet.setXuid(this.getXuid());
         packet.setText("");
+        packet.setPlatformOnlineId("");
         this.sendPacket(packet);
     }
 
@@ -509,6 +512,7 @@ public class ProxiedPlayer implements CommandSender {
         packet.setType(SetTitlePacket.Type.TITLE);
         packet.setText(text);
         packet.setXuid(this.getXuid());
+        packet.setPlatformOnlineId("");
         this.sendPacket(packet);
     }
 
@@ -520,6 +524,7 @@ public class ProxiedPlayer implements CommandSender {
         packet.setType(SetTitlePacket.Type.CLEAR);
         packet.setText("");
         packet.setXuid(this.getXuid());
+        packet.setPlatformOnlineId("");
         this.sendPacket(packet);
     }
 
@@ -531,6 +536,7 @@ public class ProxiedPlayer implements CommandSender {
         packet.setType(SetTitlePacket.Type.RESET);
         packet.setText("");
         packet.setXuid(this.getXuid());
+        packet.setPlatformOnlineId("");
         this.sendPacket(packet);
     }
 
@@ -733,6 +739,18 @@ public class ProxiedPlayer implements CommandSender {
         return this.loginData.getXuid();
     }
 
+    public Platform getDevicePlatform() {
+        return this.loginData.getDevicePlatform();
+    }
+
+    public String getDeviceModel() {
+        return this.loginData.getDeviceModel();
+    }
+
+    public String getDeviceId() {
+        return this.loginData.getDeviceId();
+    }
+
     public ProtocolVersion getProtocol() {
         return this.loginData.getProtocol();
     }
@@ -779,6 +797,10 @@ public class ProxiedPlayer implements CommandSender {
 
     public PacketHandler getPluginUpstreamHandler() {
         return this.pluginUpstreamHandler;
+    }
+
+    public LongSet getChunkBlobs() {
+        return this.chunkBlobs;
     }
 
     public void setPluginUpstreamHandler(PacketHandler pluginUpstreamHandler) {
