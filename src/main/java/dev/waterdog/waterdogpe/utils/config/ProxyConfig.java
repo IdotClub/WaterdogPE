@@ -43,6 +43,10 @@ public class ProxyConfig extends YamlConfig {
     @Comment("The Motd which will be displayed in the server tab of a player and returned during ping")
     private String motd = "§bWaterdog§3PE";
 
+    @Path("listener.name")
+    @Comment("The name that is shown up in the player list (pause menu)")
+    private String name = "§bWaterdog§3PE";
+
     @Path("listener.priorities")
     @Comment("The server priority list. If not changed by plugins, the proxy will connect the player to the first of those servers")
     private List<String> priorities = new ArrayList<>(Collections.singletonList("lobby1"));
@@ -146,6 +150,10 @@ public class ProxyConfig extends YamlConfig {
     @Comment("Creating threads may be in some situations expensive. Specify minimum count of idle threads per internal thread executors. Set to -1 to auto-detect by core count.")
     private int defaultIdleThreads = -1;
 
+    @Path("enable_statistics")
+    @Comment("Enable anonymous statistics that are sent to bstats. For more information, check out our bstats page at https://bstats.org/plugin/server-implementation/WaterdogPE/15678")
+    private boolean enableAnonymousStatistics = true;
+
     public ProxyConfig(File file) {
         this.CONFIG_HEADER = new String[]{"Waterdog Main Configuration file", "Configure your desired network settings here."};
         this.CONFIG_FILE = file;
@@ -164,6 +172,14 @@ public class ProxyConfig extends YamlConfig {
 
     public void setMotd(String motd) {
         this.motd = motd;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public int getMaxPlayerCount() {
@@ -304,5 +320,9 @@ public class ProxyConfig extends YamlConfig {
 
     public int getIdleThreads() {
         return this.defaultIdleThreads < 1 ? Runtime.getRuntime().availableProcessors() : this.defaultIdleThreads;
+    }
+
+    public boolean isEnableAnonymousStatistics() {
+        return enableAnonymousStatistics;
     }
 }
